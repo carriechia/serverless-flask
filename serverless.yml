@@ -1,0 +1,46 @@
+service: aws-flask-example
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.7
+
+functions:
+  api:
+    handler: wsgi_handler.handler
+    events:
+      - http: ANY /
+      - http: ANY /{proxy+}
+
+  cron_job:
+    handler: cron.cron_job
+    timeout: 900
+    events:
+      - schedule: rate(1 minutes)
+
+  get_sqs_message:
+    handler: sqs.get_sqs_message
+    timeout: 900
+    events:
+      - sqs:
+          arn:
+            Fn::Join:
+              - ':'
+              - - arn
+                - aws
+                - sqs
+                - ${env:AWS_REGION}
+                - ${env:QUEUE_OWNER_ACCOUNT_ID}
+                - ${env:CRON_JOB_QUEUE_NAME}
+
+custom:
+  wsgi:
+    app: app.app
+
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+  - serverless-offline-scheduler
+  - serverless-offline
+  - serverless-dotenv-plugin
